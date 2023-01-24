@@ -14,17 +14,20 @@ MainWindow::MainWindow(QWidget* parent)
     _timer.stop();
 
     QObject::connect(_form->playVideoButton, SIGNAL(clicked()), this, SLOT(startPlayVideo()));
+    QObject::connect(_form->playCameraButton, SIGNAL(clicked()), this, SLOT(startPlayCamera()));
     connect(&_timer, SIGNAL(timeout()), this, SLOT(playVideo()));
 
-    const auto width = _form->label->geometry().width();
+    const auto width = _form->videoLabel->geometry().width();
     _form->widthHorizontalSlider->setMinimum(1);
     _form->widthHorizontalSlider->setMaximum(width);
     _form->widthHorizontalSlider->setValue(width);
 
-    const auto height = _form->label->geometry().height();
+    const auto height = _form->videoLabel->geometry().height();
     _form->heightVerticalSlider->setMinimum(1);
     _form->heightVerticalSlider->setMaximum(height);
     _form->heightVerticalSlider->setValue(height);
+
+    _form->infoLabel->setText(FPS_NA);
 }
 
 MainWindow::~MainWindow()
@@ -39,7 +42,11 @@ void MainWindow::playVideo()
         _size = cv::Size(_form->widthHorizontalSlider->value(), _form->heightVerticalSlider->value());
         cv::resize(_frame, _frame, _size, 0, 0);
         const QImage qimg(_frame.data, _frame.cols, _frame.rows, _frame.step, QImage::Format_RGB888);
-        _form->label->setPixmap(QPixmap::fromImage(qimg.rgbSwapped()));
+        _form->videoLabel->setPixmap(QPixmap::fromImage(qimg.rgbSwapped()));
+
+        const int fps = _capture.get(cv::CAP_PROP_FPS);
+        const std::string info = "FPS: " + std::to_string(fps);
+        _form->infoLabel->setText(QString(info.c_str()));
     }
 }
 
@@ -47,7 +54,22 @@ void MainWindow::startPlayVideo()
 {
     _timer.stop();
 
-    _capture.open(_form->fileNameEdit->toPlainText().toStdString());
+    const std::string filename = _form->fileNameEdit->toPlainText().toStdString();
+    _capture.open(filename);
+    if (!_capture.isOpened()) {
+        std::cerr << "Cannot open the video file/link: \'" + filename + "\'!" << std::endl;
+        clearVideo();
+        return;
+    }
+
+    _timer.start(1);
+}
+
+void MainWindow::startPlayCamera()
+{
+    _timer.stop();
+
+    _capture.open(cv::VideoCaptureAPIs::CAP_ANY);
     if (!_capture.isOpened()) {
         std::cerr << "Cannot open the video camera!" << std::endl;
         clearVideo();
@@ -65,5 +87,7 @@ void MainWindow::clearVideo()
     _frame = cv::Mat(_size, CV_8UC3, BLUE);
 
     const QImage qimg(_frame.data, _frame.cols, _frame.rows, _frame.step, QImage::Format_RGB888);
-    _form->label->setPixmap(QPixmap::fromImage(qimg.rgbSwapped()));
+    _form->videoLabel->setPixmap(QPixmap::fromImage(qimg.rgbSwapped()));
+
+    _form->infoLabel->setText(FPS_NA);
 }

@@ -34,6 +34,7 @@ public:
 
 public slots:
     void startPlayVideo();
+    void startPlayCamera();
     void playVideo();
     void clearVideo();
 
@@ -43,6 +44,8 @@ private:
     cv::VideoCapture _capture;
     cv::Size _size;
     cv::Mat _frame;
+
+    inline static const QString FPS_NA = "FPS: -/-";
 };
 
 #endif // MAINWINDOW_H
